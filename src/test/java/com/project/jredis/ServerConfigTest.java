@@ -1,6 +1,5 @@
 package com.project.jredis;
 
-import com.project.jredis.config.ServerConfig;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
