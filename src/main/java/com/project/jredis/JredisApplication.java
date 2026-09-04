@@ -10,4 +10,6 @@ public class JredisApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(JredisApplication.class, args);
 	}
+
+
 }
