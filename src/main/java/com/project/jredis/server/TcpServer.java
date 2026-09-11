@@ -11,14 +11,18 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 @Component
 public class TcpServer implements CommandLineRunner {
 
     private static final Logger LOGGER = Logger.getLogger(TcpServer.class.getName());
+    private static final int MAX_CLIENTS = 50;
 
     private final ServerConfig config;
+    private final ExecutorService clientPool = Executors.newFixedThreadPool(MAX_CLIENTS);
 
     public TcpServer(ServerConfig config) {
         this.config = config;
@@ -30,8 +34,8 @@ public class TcpServer implements CommandLineRunner {
             LOGGER.info(() -> "JRedis listening on port " + config.getPort());
 
             while (true) {
-                Socket clientSocket = serverSocket.accept(); // blocks until a client connects
-                handleClient(clientSocket);
+                Socket clientSocket = serverSocket.accept(); // still blocks, but only briefly per connection
+                clientPool.submit(() -> handleClient(clientSocket));
             }
         }
     }
