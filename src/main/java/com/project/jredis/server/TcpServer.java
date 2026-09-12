@@ -14,9 +14,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
+import org.springframework.context.annotation.Profile;
 
 @Component
+@Profile("!test")
 public class TcpServer implements CommandLineRunner {
+    // unchanged below
 
     private static final Logger LOGGER = Logger.getLogger(TcpServer.class.getName());
     private static final int MAX_CLIENTS = 50;
