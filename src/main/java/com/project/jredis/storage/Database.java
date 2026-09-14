@@ -1,23 +1,22 @@
 package com.project.jredis.storage;
 
 import org.springframework.stereotype.Component;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 @Component
 public class Database {
 
-    // Deliberately a plain HashMap for now — Phase 5 explains exactly why this
-    // breaks once multiple client threads touch it at once, and fixes it properly.
-    private final Map<String, String> data = new HashMap<>();
+    private final Map<String, RedisValue> data = new ConcurrentHashMap<>();
 
-    public void set(String key, String value) {
-        data.put(key, value);
+    public RedisValue get(String key) {
+        return data.get(key);
     }
 
-    public String get(String key) {
-        return data.get(key); // null if absent
+    public void put(String key, RedisValue value) {
+        data.put(key, value);
     }
 
     public boolean delete(String key) {
@@ -34,5 +33,10 @@ public class Database {
 
     public int size() {
         return data.size();
+    }
+
+    // Atomic read-modify-write for one key — the actual fix for things like INCR.
+    public RedisValue compute(String key, BiFunction<String, RedisValue, RedisValue> remappingFunction) {
+        return data.compute(key, remappingFunction);
     }
 }

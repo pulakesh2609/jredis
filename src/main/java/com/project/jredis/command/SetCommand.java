@@ -4,6 +4,7 @@ import com.project.jredis.protocol.RespError;
 import com.project.jredis.protocol.RespSimpleString;
 import com.project.jredis.protocol.RespValue;
 import com.project.jredis.storage.Database;
+import com.project.jredis.storage.RedisString;
 import org.springframework.stereotype.Component;
 import java.util.List;
 
@@ -26,7 +27,7 @@ public class SetCommand implements Command {
         if (args.size() != 2) {
             return new RespError("ERR wrong number of arguments for 'set' command");
         }
-        database.set(args.get(0), args.get(1));
+        database.put(args.get(0), new RedisString(args.get(1)));
         return new RespSimpleString("OK");
     }
 }
