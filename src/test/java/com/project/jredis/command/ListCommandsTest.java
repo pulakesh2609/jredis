@@ -4,7 +4,6 @@ import com.project.jredis.protocol.RespArray;
 import com.project.jredis.protocol.RespBulkString;
 import com.project.jredis.protocol.RespError;
 import com.project.jredis.protocol.RespInteger;
-import com.project.jredis.storage.Database;
 import com.project.jredis.storage.RedisString;
 import org.junit.jupiter.api.Test;
 import java.util.List;
@@ -57,5 +56,11 @@ class ListCommandsTest {
         rpush.execute(List.of("mylist", "a", "b", "c", "d"));
         RespArray result = (RespArray) lrange.execute(List.of("mylist", "-2", "-1"));
         assertEquals(List.of(new RespBulkString("c"), new RespBulkString("d")), result.values());
+    }
+    @Test
+    void llenReportsLengthAndZeroForMissingKey() {
+        assertEquals(new RespInteger(0), new LLenCommand(database).execute(List.of("nope")));
+        rpush.execute(List.of("mylist", "a", "b", "c"));
+        assertEquals(new RespInteger(3), new LLenCommand(database).execute(List.of("mylist")));
     }
 }

@@ -5,7 +5,6 @@ import com.project.jredis.protocol.RespBulkString;
 import com.project.jredis.protocol.RespInteger;
 import com.project.jredis.protocol.RespSimpleString;
 import com.project.jredis.protocol.RespValue;
-import com.project.jredis.storage.Database;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;

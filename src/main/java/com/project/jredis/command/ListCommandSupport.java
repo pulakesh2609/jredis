@@ -1,17 +1,15 @@
 package com.project.jredis.command;
+
 import com.project.jredis.storage.RedisList;
+import com.project.jredis.storage.RedisValue;
 import java.util.ArrayList;
 
+final class ListCommandSupport {
 
-public class ListCommandSupport {
-}
-
-final class listCommandSupport {
-
-    private listCommandSupport() {
+    private ListCommandSupport() {
     }
 
-    static <RedisValue> RedisList asListOrCreate(RedisValue existing) {
+    static RedisList asListOrCreate(RedisValue existing) {
         if (existing == null) {
             return new RedisList(new ArrayList<>());
         }

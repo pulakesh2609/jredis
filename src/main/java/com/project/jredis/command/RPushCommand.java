@@ -34,9 +34,9 @@ public class RPushCommand implements Command {
 
         try {
             database.compute(key, (k, existing) -> {
-                RedisList list = listCommandSupport.asListOrCreate(existing);
+                RedisList list = ListCommandSupport.asListOrCreate(existing);
                 for (String value : valuesToPush) {
-                    list.values().add(value); // each one lands at the tail
+                    list.values().add(value);
                 }
                 newSize.set(list.values().size());
                 return list;

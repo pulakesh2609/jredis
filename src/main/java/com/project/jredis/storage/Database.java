@@ -35,7 +35,6 @@ public class Database {
         return data.size();
     }
 
-    // Atomic read-modify-write for one key — the actual fix for things like INCR.
     public RedisValue compute(String key, BiFunction<String, RedisValue, RedisValue> remappingFunction) {
         return data.compute(key, remappingFunction);
     }
