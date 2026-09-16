@@ -1,5 +1,6 @@
 package com.project.jredis.server;
 
+import com.project.jredis.command.ClientSession;
 import com.project.jredis.command.CommandDispatcher;
 import com.project.jredis.config.ServerConfig;
 import com.project.jredis.protocol.RespEncoder;
@@ -25,6 +26,7 @@ import java.util.logging.Logger;
 @Profile("!test")
 public class TcpServer implements CommandLineRunner {
 
+    ClientSession session = new ClientSession();
     private static final Logger LOGGER = Logger.getLogger(TcpServer.class.getName());
     private static final int MAX_CLIENTS = 50;
 
@@ -76,7 +78,7 @@ public class TcpServer implements CommandLineRunner {
                     break;
                 }
 
-                RespValue response = dispatcher.dispatch(request);
+                RespValue response = dispatcher.dispatch(request, session);
                 out.print(encoder.encode(response));
                 out.flush();
             }
