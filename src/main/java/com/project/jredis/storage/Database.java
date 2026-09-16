@@ -3,6 +3,7 @@ package com.project.jredis.storage;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,7 +16,7 @@ import java.util.function.BiFunction;
 public class Database {
 
     private final Map<String, RedisValue> data = new ConcurrentHashMap<>();
-    private final Map<String, Long> expirations = new ConcurrentHashMap<>(); // key -> absolute expiry epoch millis
+    private final Map<String, Long> expirations = new ConcurrentHashMap<>();
     private final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
 
     @PostConstruct
@@ -52,7 +53,7 @@ public class Database {
     }
 
     public void put(String key, RedisValue value) {
-        expirations.remove(key); // matches real Redis: a plain SET clears any existing TTL
+        expirations.remove(key);
         data.put(key, value);
     }
 
@@ -98,5 +99,22 @@ public class Database {
     public boolean persist(String key) {
         expireIfNeeded(key);
         return expirations.remove(key) != null;
+    }
+
+    public Map<String, RedisValue> snapshotEntries() {
+        sweepExpiredKeys(); // never persist keys that have already expired
+        return new HashMap<>(data); // defensive copy for the snapshot writer to iterate independently
+    }
+
+    public void restoreEntry(String key, RedisValue value, Long expiryEpochMillis) {
+        data.put(key, value);
+        if (expiryEpochMillis != null) {
+            expirations.put(key, expiryEpochMillis);
+        }
+    }
+
+    public void clear() {
+        data.clear();
+        expirations.clear();
     }
 }
