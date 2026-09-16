@@ -8,6 +8,7 @@ import com.project.jredis.storage.RedisString;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
+import com.project.jredis.storage.Database;
 
 class ListCommandsTest {
 

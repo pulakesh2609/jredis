@@ -20,7 +20,7 @@ class DatabaseConcurrencyTest {
             int threadId = t;
             pool.submit(() -> {
                 for (int k = 0; k < keysPerThread; k++) {
-                    database.set("thread" + threadId + "-key" + k, "value");
+                    database.put("thread" + threadId + "-key" + k, new RedisString("value"));
                 }
             });
         }
@@ -28,6 +28,6 @@ class DatabaseConcurrencyTest {
         pool.awaitTermination(30, TimeUnit.SECONDS);
 
         assertEquals(expectedTotal, database.size(),
-                "Expected every key to be stored — a lower count means concurrent HashMap writes silently lost data");
+                "Expected every key to be stored — a lower count means concurrent map writes silently lost data");
     }
 }
