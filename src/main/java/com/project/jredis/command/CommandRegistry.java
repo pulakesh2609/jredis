@@ -18,4 +18,6 @@ public class CommandRegistry {
     public Command find(String name) {
         return commands.get(name.toUpperCase());
     }
+    public java.util.Set<String> allCommandNames() {
+        return commands.keySet();}
 }

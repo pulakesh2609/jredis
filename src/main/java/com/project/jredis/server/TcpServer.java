@@ -2,7 +2,10 @@ package com.project.jredis.server;
 
 import com.project.jredis.command.ClientSession;
 import com.project.jredis.command.CommandDispatcher;
+import com.project.jredis.command.PubSubBroker;
 import com.project.jredis.config.ServerConfig;
+import com.project.jredis.protocol.RespArray;
+import com.project.jredis.protocol.RespBulkString;
 import com.project.jredis.protocol.RespEncoder;
 import com.project.jredis.protocol.RespError;
 import com.project.jredis.protocol.RespParser;
@@ -18,6 +21,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
@@ -31,13 +35,17 @@ public class TcpServer implements CommandLineRunner {
 
     private final ServerConfig config;
     private final CommandDispatcher dispatcher;
+    private final PubSubBroker pubSubBroker;
+    private final ServerStats stats;
     private final RespParser parser = new RespParser();
     private final RespEncoder encoder = new RespEncoder();
     private final ExecutorService clientPool = Executors.newFixedThreadPool(MAX_CLIENTS);
 
-    public TcpServer(ServerConfig config, CommandDispatcher dispatcher) {
+    public TcpServer(ServerConfig config, CommandDispatcher dispatcher, PubSubBroker pubSubBroker, ServerStats stats) {
         this.config = config;
         this.dispatcher = dispatcher;
+        this.pubSubBroker = pubSubBroker;
+        this.stats = stats;
     }
 
     @Override
@@ -53,6 +61,7 @@ public class TcpServer implements CommandLineRunner {
     }
 
     private void handleClient(Socket clientSocket) {
+        ClientSession session = new ClientSession();
         try (
                 clientSocket;
                 BufferedReader in = new BufferedReader(
@@ -60,7 +69,15 @@ public class TcpServer implements CommandLineRunner {
                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true, StandardCharsets.UTF_8)
         ) {
             LOGGER.info(() -> "Client connected: " + clientSocket.getRemoteSocketAddress());
-            ClientSession session = new ClientSession(); // one per connection — never shared across clients
+            stats.clientConnected();
+            session.setMessagePusher((channel, message) -> {
+                RespArray pushArray = new RespArray(List.of(
+                        new RespBulkString("message"),
+                        new RespBulkString(channel),
+                        new RespBulkString(message)
+                ));
+                sendResponse(out, pushArray);
+            });
 
             while (true) {
                 RespValue request;
@@ -69,8 +86,7 @@ public class TcpServer implements CommandLineRunner {
                 } catch (IOException e) {
                     break;
                 } catch (IllegalArgumentException e) {
-                    out.print(encoder.encode(new RespError("ERR Protocol error: " + e.getMessage())));
-                    out.flush();
+                    sendResponse(out, new RespError("ERR Protocol error: " + e.getMessage()));
                     break;
                 }
 
@@ -79,13 +95,21 @@ public class TcpServer implements CommandLineRunner {
                 }
 
                 RespValue response = dispatcher.dispatch(request, session);
-                out.print(encoder.encode(response));
-                out.flush();
+                sendResponse(out, response);
             }
-
-            LOGGER.info(() -> "Client disconnected: " + clientSocket.getRemoteSocketAddress());
         } catch (IOException e) {
             LOGGER.warning(() -> "Error handling client: " + e.getMessage());
+        } finally {
+            pubSubBroker.unsubscribeAll(session);
+            stats.clientDisconnected();
+            LOGGER.info(() -> "Client disconnected: " + clientSocket.getRemoteSocketAddress());
+        }
+    }
+
+    private void sendResponse(PrintWriter out, RespValue value) {
+        synchronized (out) {
+            out.print(encoder.encode(value));
+            out.flush();
         }
     }
 }

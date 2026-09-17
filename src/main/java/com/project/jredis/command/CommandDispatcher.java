@@ -5,6 +5,7 @@ import com.project.jredis.protocol.RespBulkString;
 import com.project.jredis.protocol.RespError;
 import com.project.jredis.protocol.RespSimpleString;
 import com.project.jredis.protocol.RespValue;
+import com.project.jredis.server.ServerStats;
 import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,10 +15,12 @@ public class CommandDispatcher {
 
     private final CommandRegistry registry;
     private final PubSubBroker pubSubBroker;
+    private final ServerStats stats;
 
-    public CommandDispatcher(CommandRegistry registry, PubSubBroker pubSubBroker) {
+    public CommandDispatcher(CommandRegistry registry, PubSubBroker pubSubBroker, ServerStats stats) {
         this.registry = registry;
         this.pubSubBroker = pubSubBroker;
+        this.stats = stats;
     }
 
     public RespValue dispatch(RespValue request, ClientSession session) {
@@ -32,6 +35,8 @@ public class CommandDispatcher {
             }
             parts.add(bulkString.value());
         }
+
+        stats.commandProcessed();
 
         String commandName = parts.get(0).toUpperCase();
         List<String> args = parts.subList(1, parts.size());
