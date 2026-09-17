@@ -26,7 +26,6 @@ import java.util.logging.Logger;
 @Profile("!test")
 public class TcpServer implements CommandLineRunner {
 
-    ClientSession session = new ClientSession();
     private static final Logger LOGGER = Logger.getLogger(TcpServer.class.getName());
     private static final int MAX_CLIENTS = 50;
 
@@ -61,6 +60,7 @@ public class TcpServer implements CommandLineRunner {
                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true, StandardCharsets.UTF_8)
         ) {
             LOGGER.info(() -> "Client connected: " + clientSocket.getRemoteSocketAddress());
+            ClientSession session = new ClientSession(); // one per connection — never shared across clients
 
             while (true) {
                 RespValue request;

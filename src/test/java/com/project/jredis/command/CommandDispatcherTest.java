@@ -13,28 +13,30 @@ class CommandDispatcherTest {
 
     private final CommandRegistry registry =
             new CommandRegistry(List.of(new PingCommand(), new EchoCommand()));
-    private final CommandDispatcher dispatcher = new CommandDispatcher(registry);
+    private final PubSubBroker pubSubBroker = new PubSubBroker();
+    private final CommandDispatcher dispatcher = new CommandDispatcher(registry, pubSubBroker);
+    private final ClientSession session = new ClientSession();
 
     @Test
     void dispatchesPing() {
         RespArray request = new RespArray(List.of(new RespBulkString("PING")));
-        assertEquals(new RespSimpleString("PONG"), dispatcher.dispatch(request));
+        assertEquals(new RespSimpleString("PONG"), dispatcher.dispatch(request, session));
     }
 
     @Test
     void dispatchIsCaseInsensitive() {
         RespArray request = new RespArray(List.of(new RespBulkString("ping")));
-        assertEquals(new RespSimpleString("PONG"), dispatcher.dispatch(request));
+        assertEquals(new RespSimpleString("PONG"), dispatcher.dispatch(request, session));
     }
 
     @Test
     void returnsErrorForUnknownCommand() {
         RespArray request = new RespArray(List.of(new RespBulkString("FOOBAR")));
-        assertInstanceOf(RespError.class, dispatcher.dispatch(request));
+        assertInstanceOf(RespError.class, dispatcher.dispatch(request, session));
     }
 
     @Test
     void returnsErrorForNonArrayRequest() {
-        assertInstanceOf(RespError.class, dispatcher.dispatch(new RespSimpleString("nope")));
+        assertInstanceOf(RespError.class, dispatcher.dispatch(new RespSimpleString("nope"), session));
     }
 }
