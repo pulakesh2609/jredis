@@ -16,7 +16,8 @@ class TransactionTest {
     private final Database database = new Database();
     private final CommandRegistry registry = new CommandRegistry(
             List.of(new SetCommand(database), new GetCommand(database), new PingCommand()));
-    private final CommandDispatcher dispatcher = new CommandDispatcher(registry);
+    private final PubSubBroker pubSubBroker = new PubSubBroker();
+    private final CommandDispatcher dispatcher = new CommandDispatcher(registry, pubSubBroker);
 
     private RespArray command(String... parts) {
         List<RespValue> values = new ArrayList<>();
@@ -32,7 +33,7 @@ class TransactionTest {
         dispatcher.dispatch(command("MULTI"), session);
         Object result = dispatcher.dispatch(command("SET", "key", "value"), session);
         assertEquals(new RespSimpleString("QUEUED"), result);
-        assertNull(database.get("key")); // not actually set yet
+        assertNull(database.get("key"));
     }
 
     @Test
@@ -82,7 +83,7 @@ class TransactionTest {
         Object result = dispatcher.dispatch(command("EXEC"), session);
         assertInstanceOf(RespError.class, result);
         assertTrue(((RespError) result).message().startsWith("EXECABORT"));
-        assertNull(database.get("key")); // whole batch discarded, including the valid SET
+        assertNull(database.get("key"));
     }
 
     @Test
@@ -92,6 +93,6 @@ class TransactionTest {
 
         dispatcher.dispatch(command("MULTI"), sessionA);
         Object result = dispatcher.dispatch(command("SET", "key", "value"), sessionB);
-        assertEquals(new RespSimpleString("OK"), result); // sessionB executes immediately, unaffected
+        assertEquals(new RespSimpleString("OK"), result);
     }
 }

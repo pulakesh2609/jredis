@@ -13,9 +13,11 @@ import java.util.List;
 public class CommandDispatcher {
 
     private final CommandRegistry registry;
+    private final PubSubBroker pubSubBroker;
 
-    public CommandDispatcher(CommandRegistry registry) {
+    public CommandDispatcher(CommandRegistry registry, PubSubBroker pubSubBroker) {
         this.registry = registry;
+        this.pubSubBroker = pubSubBroker;
     }
 
     public RespValue dispatch(RespValue request, ClientSession session) {
@@ -59,11 +61,29 @@ public class CommandDispatcher {
                 }
                 return executeQueuedCommands(session.drainQueuedCommands());
             }
+            case "SUBSCRIBE" -> {
+                if (args.isEmpty()) {
+                    return new RespError("ERR wrong number of arguments for 'subscribe' command");
+                }
+                for (String channel : args) {
+                    pubSubBroker.subscribe(channel, session);
+                }
+                return new RespSimpleString("SUBSCRIBED to " + args.size() + " channel(s)");
+            }
+            case "UNSUBSCRIBE" -> {
+                List<String> channelsToRemove = args.isEmpty()
+                        ? new ArrayList<>(session.getSubscriptions())
+                        : args;
+                for (String channel : channelsToRemove) {
+                    pubSubBroker.unsubscribe(channel, session);
+                }
+                return new RespSimpleString("UNSUBSCRIBED from " + channelsToRemove.size() + " channel(s)");
+            }
             default -> {
                 if (session.isInTransaction()) {
                     Command command = registry.find(commandName);
                     if (command == null) {
-                        session.markDirty(); // real Redis: an unknown command dooms the whole EXEC
+                        session.markDirty();
                         return new RespError("ERR unknown command '" + commandName + "'");
                     }
                     session.queueCommand(request);
@@ -77,7 +97,7 @@ public class CommandDispatcher {
     private RespValue executeQueuedCommands(List<RespValue> queuedRequests) {
         List<RespValue> results = new ArrayList<>();
         for (RespValue queuedRequest : queuedRequests) {
-            RespArray array = (RespArray) queuedRequest; // safe — only ever queued via this same validation path
+            RespArray array = (RespArray) queuedRequest;
             List<String> parts = new ArrayList<>();
             for (RespValue element : array.values()) {
                 parts.add(((RespBulkString) element).value());
