@@ -17,7 +17,8 @@ class TransactionTest {
     private final CommandRegistry registry = new CommandRegistry(
             List.of(new SetCommand(database), new GetCommand(database), new PingCommand()));
     private final PubSubBroker pubSubBroker = new PubSubBroker();
-    private final CommandDispatcher dispatcher = new CommandDispatcher(registry, pubSubBroker);
+    private final com.project.jredis.server.ServerStats stats = new com.project.jredis.server.ServerStats();
+    private final CommandDispatcher dispatcher = new CommandDispatcher(registry, pubSubBroker, stats);
 
     private RespArray command(String... parts) {
         List<RespValue> values = new ArrayList<>();

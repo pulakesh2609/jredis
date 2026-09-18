@@ -4,6 +4,7 @@ import com.project.jredis.protocol.RespArray;
 import com.project.jredis.protocol.RespBulkString;
 import com.project.jredis.protocol.RespError;
 import com.project.jredis.protocol.RespSimpleString;
+import com.project.jredis.server.ServerStats;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,7 +15,8 @@ class CommandDispatcherTest {
     private final CommandRegistry registry =
             new CommandRegistry(List.of(new PingCommand(), new EchoCommand()));
     private final PubSubBroker pubSubBroker = new PubSubBroker();
-    private final CommandDispatcher dispatcher = new CommandDispatcher(registry, pubSubBroker);
+    private final ServerStats stats = new ServerStats();
+    private final CommandDispatcher dispatcher = new CommandDispatcher(registry, pubSubBroker, stats);
     private final ClientSession session = new ClientSession();
 
     @Test
