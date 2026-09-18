@@ -3,6 +3,7 @@ package com.project.jredis.command;
 import com.project.jredis.protocol.RespArray;
 import com.project.jredis.protocol.RespBulkString;
 import com.project.jredis.protocol.RespValue;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import java.util.List;
 
@@ -11,7 +12,7 @@ public class CommandListCommand implements Command {
 
     private final CommandRegistry registry;
 
-    public CommandListCommand(CommandRegistry registry) {
+    public CommandListCommand(@Lazy CommandRegistry registry) {
         this.registry = registry;
     }
 
