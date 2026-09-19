@@ -20,7 +20,7 @@ public class Benchmark {
     private static final int PORT = 6380;
 
     public static void main(String[] args) throws InterruptedException {
-        int clientCount = 50;
+        int clientCount = 100;
         int opsPerClient = 1000;
 
         System.out.println("Benchmarking SET: " + clientCount + " clients x " + opsPerClient + " ops each");
