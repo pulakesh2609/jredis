@@ -37,9 +37,13 @@ public class InfoCommand implements Command {
 
             # Clients
             connected_clients:%d
+            total_connections_received:%d
 
             # Stats
             total_commands_processed:%d
+            total_errors:%d
+            avg_latency_ms:%.3f
+            max_latency_ms:%.3f
 
             # Keyspace
             db0:keys=%d
@@ -50,7 +54,11 @@ public class InfoCommand implements Command {
                 SERVER_VERSION,
                 stats.getUptimeSeconds(),
                 stats.getConnectedClients(),
+                stats.getTotalConnectionsEver(),
                 stats.getTotalCommandsProcessed(),
+                stats.getTotalErrors(),
+                stats.getAverageLatencyMillis(),
+                stats.getMaxLatencyMillis(),
                 database.size(),
                 usedMemoryBytes
         );

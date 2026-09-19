@@ -10,6 +10,8 @@ import com.project.jredis.protocol.RespEncoder;
 import com.project.jredis.protocol.RespError;
 import com.project.jredis.protocol.RespParser;
 import com.project.jredis.protocol.RespValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -24,13 +26,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Logger;
 
 @Component
 @Profile("!test")
 public class TcpServer implements CommandLineRunner {
 
-    private static final Logger LOGGER = Logger.getLogger(TcpServer.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(TcpServer.class);
     private static final int MAX_CLIENTS = 50;
 
     private final ServerConfig config;
@@ -51,7 +52,7 @@ public class TcpServer implements CommandLineRunner {
     @Override
     public void run(String... args) throws IOException {
         try (ServerSocket serverSocket = new ServerSocket(config.getPort())) {
-            LOGGER.info(() -> "JRedis listening on port " + config.getPort());
+            log.info("event=server_started port={}", config.getPort());
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -62,14 +63,17 @@ public class TcpServer implements CommandLineRunner {
 
     private void handleClient(Socket clientSocket) {
         ClientSession session = new ClientSession();
+        String remote = String.valueOf(clientSocket.getRemoteSocketAddress());
+
         try (
                 clientSocket;
                 BufferedReader in = new BufferedReader(
                         new InputStreamReader(clientSocket.getInputStream(), StandardCharsets.UTF_8));
                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true, StandardCharsets.UTF_8)
         ) {
-            LOGGER.info(() -> "Client connected: " + clientSocket.getRemoteSocketAddress());
             stats.clientConnected();
+            log.info("event=client_connected remote={} connected_clients={}", remote, stats.getConnectedClients());
+
             session.setMessagePusher((channel, message) -> {
                 RespArray pushArray = new RespArray(List.of(
                         new RespBulkString("message"),
@@ -84,8 +88,10 @@ public class TcpServer implements CommandLineRunner {
                 try {
                     request = parser.parse(in);
                 } catch (IOException e) {
+                    log.warn("event=client_io_error remote={} message={}", remote, e.getMessage());
                     break;
                 } catch (IllegalArgumentException e) {
+                    log.warn("event=protocol_error remote={} message={}", remote, e.getMessage());
                     sendResponse(out, new RespError("ERR Protocol error: " + e.getMessage()));
                     break;
                 }
@@ -98,11 +104,11 @@ public class TcpServer implements CommandLineRunner {
                 sendResponse(out, response);
             }
         } catch (IOException e) {
-            LOGGER.warning(() -> "Error handling client: " + e.getMessage());
+            log.warn("event=client_handler_error remote={} message={}", remote, e.getMessage());
         } finally {
             pubSubBroker.unsubscribeAll(session);
             stats.clientDisconnected();
-            LOGGER.info(() -> "Client disconnected: " + clientSocket.getRemoteSocketAddress());
+            log.info("event=client_disconnected remote={} connected_clients={}", remote, stats.getConnectedClients());
         }
     }
 

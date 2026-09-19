@@ -6,12 +6,16 @@ import com.project.jredis.protocol.RespError;
 import com.project.jredis.protocol.RespSimpleString;
 import com.project.jredis.protocol.RespValue;
 import com.project.jredis.server.ServerStats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class CommandDispatcher {
+
+    private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
     private final CommandRegistry registry;
     private final PubSubBroker pubSubBroker;
@@ -24,6 +28,20 @@ public class CommandDispatcher {
     }
 
     public RespValue dispatch(RespValue request, ClientSession session) {
+        long startNanos = System.nanoTime();
+        RespValue response = doDispatch(request, session);
+        long latencyNanos = System.nanoTime() - startNanos;
+        boolean wasError = response instanceof RespError;
+        stats.commandProcessed(latencyNanos, wasError);
+
+        if (log.isDebugEnabled()) {
+            log.debug("event=command_processed latency_ms={} error={}",
+                    String.format("%.3f", latencyNanos / 1_000_000.0), wasError);
+        }
+        return response;
+    }
+
+    private RespValue doDispatch(RespValue request, ClientSession session) {
         if (!(request instanceof RespArray array) || array.values().isEmpty()) {
             return new RespError("ERR invalid request");
         }
@@ -35,8 +53,6 @@ public class CommandDispatcher {
             }
             parts.add(bulkString.value());
         }
-
-        stats.commandProcessed();
 
         String commandName = parts.get(0).toUpperCase();
         List<String> args = parts.subList(1, parts.size());
