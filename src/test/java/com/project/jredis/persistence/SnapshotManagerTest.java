@@ -1,5 +1,6 @@
 package com.project.jredis.persistence;
 
+import com.project.jredis.config.ServerConfig;
 import com.project.jredis.storage.Database;
 import com.project.jredis.storage.RedisHash;
 import com.project.jredis.storage.RedisList;
@@ -21,7 +22,7 @@ class SnapshotManagerTest {
     @Test
     void savedSnapshotRestoresAllDataTypes(@TempDir Path tempDir) throws IOException {
         Database original = new Database();
-        SnapshotManager writer = new SnapshotManager(original);
+        SnapshotManager writer = new SnapshotManager(original, new ServerConfig());
 
         original.put("greeting", new RedisString("hello"));
         original.put("mylist", new RedisList(new ArrayList<>(List.of("a", "b", "c"))));
@@ -35,7 +36,7 @@ class SnapshotManagerTest {
         writer.save(snapshotFile);
 
         Database restored = new Database();
-        SnapshotManager reader = new SnapshotManager(restored);
+        SnapshotManager reader = new SnapshotManager(restored, new ServerConfig());
         reader.load(snapshotFile);
 
         assertEquals(new RedisString("hello"), restored.get("greeting"));
@@ -48,7 +49,7 @@ class SnapshotManagerTest {
     @Test
     void expiryMetadataSurvivesRoundTrip(@TempDir Path tempDir) throws IOException {
         Database original = new Database();
-        SnapshotManager writer = new SnapshotManager(original);
+        SnapshotManager writer = new SnapshotManager(original, new ServerConfig());
 
         original.put("temp", new RedisString("value"));
         long expiry = System.currentTimeMillis() + 100_000;
@@ -58,7 +59,7 @@ class SnapshotManagerTest {
         writer.save(snapshotFile);
 
         Database restored = new Database();
-        SnapshotManager reader = new SnapshotManager(restored);
+        SnapshotManager reader = new SnapshotManager(restored, new ServerConfig());
         reader.load(snapshotFile);
 
         Long restoredExpiry = restored.getExpiration("temp");
@@ -69,7 +70,7 @@ class SnapshotManagerTest {
     @Test
     void loadOnMissingFileDoesNothing(@TempDir Path tempDir) throws IOException {
         Database database = new Database();
-        SnapshotManager manager = new SnapshotManager(database);
+        SnapshotManager manager = new SnapshotManager(database, new ServerConfig());
 
         manager.load(tempDir.resolve("does-not-exist.rdb"));
 

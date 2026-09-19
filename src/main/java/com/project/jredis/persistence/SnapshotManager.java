@@ -1,5 +1,6 @@
 package com.project.jredis.persistence;
 
+import com.project.jredis.config.ServerConfig;
 import com.project.jredis.storage.Database;
 import com.project.jredis.storage.RedisHash;
 import com.project.jredis.storage.RedisList;
@@ -7,6 +8,7 @@ import com.project.jredis.storage.RedisSet;
 import com.project.jredis.storage.RedisString;
 import com.project.jredis.storage.RedisValue;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 
 import java.io.DataInputStream;
@@ -21,6 +23,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,7 +33,6 @@ import java.util.logging.Logger;
 public class SnapshotManager {
 
     private static final Logger LOGGER = Logger.getLogger(SnapshotManager.class.getName());
-    private static final Path DEFAULT_SNAPSHOT_FILE = Path.of("jredis.rdb");
 
     private static final byte TYPE_STRING = 0;
     private static final byte TYPE_LIST = 1;
@@ -36,22 +40,49 @@ public class SnapshotManager {
     private static final byte TYPE_HASH = 3;
 
     private final Database database;
+    private final ServerConfig config;
+    private final ScheduledExecutorService autoSaveExecutor = Executors.newSingleThreadScheduledExecutor();
 
-    public SnapshotManager(Database database) {
+    public SnapshotManager(Database database, ServerConfig config) {
         this.database = database;
+        this.config = config;
+    }
+
+    private Path snapshotPath() {
+        return Path.of(config.getPersistenceDirectory(), config.getSnapshotFilename());
     }
 
     @PostConstruct
-    void loadOnStartup() {
+    void initialize() {
         try {
-            load(DEFAULT_SNAPSHOT_FILE);
+            load(snapshotPath());
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to load snapshot on startup", e);
+        }
+
+        int intervalSeconds = config.getSnapshotIntervalSeconds();
+        if (intervalSeconds > 0) {
+            autoSaveExecutor.scheduleAtFixedRate(this::autoSave, intervalSeconds, intervalSeconds, TimeUnit.SECONDS);
+            LOGGER.info("Periodic auto-save enabled every " + intervalSeconds + "s");
+        }
+    }
+
+    @PreDestroy
+    void shutdown() {
+        autoSaveExecutor.shutdown();
+    }
+
+    private void autoSave() {
+        try {
+            save();
+            LOGGER.info("Auto-save completed");
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Auto-save failed", e);
         }
     }
 
     public void save() throws IOException {
-        save(DEFAULT_SNAPSHOT_FILE);
+        save(snapshotPath());
     }
 
     public void save(Path targetFile) throws IOException {
@@ -70,16 +101,13 @@ public class SnapshotManager {
             }
         }
 
-        // Write to a temp file, then atomically swap it into place — the real snapshot
-        // file is always either fully-written or untouched, never partially overwritten,
-        // even if the process dies mid-write.
         Files.move(tempFile, targetFile,
                 StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
     public void load(Path sourceFile) throws IOException {
         if (!Files.exists(sourceFile)) {
-            return; // nothing to load yet — fresh start
+            return;
         }
 
         database.clear();

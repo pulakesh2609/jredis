@@ -40,19 +40,20 @@ public class TcpServer implements CommandLineRunner {
     private final ServerStats stats;
     private final RespParser parser = new RespParser();
     private final RespEncoder encoder = new RespEncoder();
-    private final ExecutorService clientPool = Executors.newFixedThreadPool(MAX_CLIENTS);
+    private final ExecutorService clientPool;
 
     public TcpServer(ServerConfig config, CommandDispatcher dispatcher, PubSubBroker pubSubBroker, ServerStats stats) {
         this.config = config;
         this.dispatcher = dispatcher;
         this.pubSubBroker = pubSubBroker;
         this.stats = stats;
+        this.clientPool = Executors.newFixedThreadPool(config.getMaxConnections());
     }
 
     @Override
     public void run(String... args) throws IOException {
         try (ServerSocket serverSocket = new ServerSocket(config.getPort())) {
-            log.info("event=server_started port={}", config.getPort());
+            log.info("event=server_started port={} max_connections={}", config.getPort(), config.getMaxConnections());
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();

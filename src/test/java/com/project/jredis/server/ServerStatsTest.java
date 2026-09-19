@@ -23,9 +23,9 @@ class ServerStatsTest {
         ServerStats stats = new ServerStats();
         assertEquals(0, stats.getTotalCommandsProcessed());
 
-        stats.commandProcessed();
-        stats.commandProcessed();
-        stats.commandProcessed();
+        stats.commandProcessed(1_000_000, false);
+        stats.commandProcessed(1_000_000, false);
+        stats.commandProcessed(1_000_000, false);
         assertEquals(3, stats.getTotalCommandsProcessed());
     }
 
@@ -70,12 +70,4 @@ class ServerStatsTest {
         assertEquals(2.0, stats.getAverageLatencyMillis(), 0.001);
         assertEquals(3.0, stats.getMaxLatencyMillis(), 0.001);
     }
-
 }
-
-
-
-
-
-
-
